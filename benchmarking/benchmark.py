@@ -440,8 +440,8 @@ if __name__ == "__main__":
     from torchvision import utils as vutils
     
     IM_SIZE = 1024
-    BATCH_SIZE = 16
-    DATALOADER_WORKERS = 8
+    BATCH_SIZE = 5
+    DATALOADER_WORKERS = 5
     NBR_CLS = 2000
     TRIAL_NAME = 'trial_vae_512_1'
     SAVE_FOLDER = './'
@@ -535,8 +535,8 @@ if __name__ == "__main__":
     inception = load_patched_inception_v3().cuda()
     inception.eval()
     
-    path_a = '../../../database/images/celebaMask/CelebA_1024'
-    path_b = '../../stylegan/celebahq_samples'
+    path_a = '/home/huydtran/Desktop/FastGAN-pytorch/few-shot-images/anime-face/'
+    path_b = '/home/huydtran/Desktop/FastGAN-pytorch/train_results/test1/images/'
 
     from torchvision import transforms
 
@@ -550,10 +550,12 @@ if __name__ == "__main__":
     )
 
     dset_a = ImageFolder(path_a, transform)
-    loader_a = iter(DataLoader(dset_a, batch_size=16, num_workers=4))
+    loader_a = iter(DataLoader(dset_a, batch_size=BATCH_SIZE, num_workers=4))
+    print(len(dset_a))
+    N_BATCHES_A = len(dset_a)//BATCH_SIZE
 
     real_features = extract_feature_from_generator_fn( 
-        real_image_loader(loader_a, n_batches=900), inception )
+        real_image_loader(loader_a, n_batches=N_BATCHES_A), inception )
     real_mean = np.mean(real_features, 0)
     real_cov = np.cov(real_features, rowvar=False)
     
@@ -565,10 +567,11 @@ if __name__ == "__main__":
     #sample_features = extract_feature_from_generator_fn( real_image_loader(dataloader, n_batches=100), inception )
     
     dset_b = ImageFolder(path_b, transform)
-    loader_b = iter(DataLoader(dset_b, batch_size=16, num_workers=4))
+    N_BATCHES_B = len(dset_b)//BATCH_SIZE
+    loader_b = iter(DataLoader(dset_b, batch_size=BATCH_SIZE, num_workers=4))
 
     sample_features = extract_feature_from_generator_fn( 
-        real_image_loader(loader_b, n_batches=900), inception )
+        real_image_loader(loader_b, n_batches=N_BATCHES_B), inception )
     #sample_features = extract_feature_from_generator_fn( 
     #        image_generator(dataset, net_ae, net_ig, n_batches=1800), inception,
     #         total=1800 )
