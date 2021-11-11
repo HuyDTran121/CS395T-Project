@@ -74,13 +74,22 @@ class Swish(nn.Module):
 class SEBlock(nn.Module):
     def __init__(self, ch_in, ch_out):
         super().__init__()
+        # self.ch_in = ch_in
+        # self.ch_out = ch_out
 
         self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
                                     conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
                                     conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
 
     def forward(self, feat_small, feat_big):
-        return feat_big * self.main(feat_small)
+        # print("SEBlock")
+        # print(self.ch_in)
+        # print(self.ch_out)
+        # print("feat_small", feat_small.shape)
+        # print("feat_big", feat_big.shape)
+        out = feat_big * self.main(feat_small)
+        # print("out", out.shape)
+        return out
 
 
 class InitLayer(nn.Module):

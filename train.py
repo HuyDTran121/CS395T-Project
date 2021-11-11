@@ -67,7 +67,8 @@ def train(args):
     multi_gpu = True
     dataloader_workers = 8
     current_iteration = 0
-    save_interval = 100
+    pic_interval = 1000
+    save_interval = 10000
     saved_model_folder, saved_image_folder = get_dir(args)
     
     device = torch.device("cpu")
@@ -112,22 +113,24 @@ def train(args):
 
     fixed_noise = torch.FloatTensor(8, nz).normal_(0, 1).to(device)
     
+    optimizerG = optim.Adam(netG.parameters(), lr=nlr, betas=(nbeta1, 0.999))
+    optimizerD = optim.Adam(netD.parameters(), lr=nlr, betas=(nbeta1, 0.999))
+
+    if multi_gpu:
+        netG = nn.DataParallel(netG.to(device))
+        netD = nn.DataParallel(netD.to(device))
+
     if checkpoint != 'None':
         ckpt = torch.load(checkpoint)
-        netG.load_state_dict(ckpt['g'])
         netD.load_state_dict(ckpt['d'])
+        netG.load_state_dict(ckpt['g'])
         avg_param_G = ckpt['g_ema']
         optimizerG.load_state_dict(ckpt['opt_g'])
         optimizerD.load_state_dict(ckpt['opt_d'])
         current_iteration = int(checkpoint.split('_')[-1].split('.')[0])
         del ckpt
         
-    if multi_gpu:
-        netG = nn.DataParallel(netG.to(device))
-        netD = nn.DataParallel(netD.to(device))
 
-    optimizerG = optim.Adam(netG.parameters(), lr=nlr, betas=(nbeta1, 0.999))
-    optimizerD = optim.Adam(netD.parameters(), lr=nlr, betas=(nbeta1, 0.999))
     
     for iteration in tqdm(range(current_iteration, total_iterations+1)):
         real_image = next(dataloader)
@@ -147,7 +150,7 @@ def train(args):
         train_d(netD, [fi.detach() for fi in fake_images], label="fake")
         optimizerD.step()
         
-        ## 3. train Generator
+     ## 3. train Generator
         netG.zero_grad()
         pred_g = netD(fake_images, "fake")
         err_g = -pred_g.mean()
@@ -161,7 +164,7 @@ def train(args):
         if iteration % 100 == 0:
             print("GAN: loss d: %.5f    loss g: %.5f"%(err_dr, -err_g.item()))
 
-        if iteration % (save_interval*10) == 0:
+        if iteration % (pic_interval) == 0:
             backup_para = copy_G_params(netG)
             load_params(netG, avg_param_G)
             with torch.no_grad():
@@ -172,7 +175,7 @@ def train(args):
                         rec_img_part]).add(1).mul(0.5), saved_image_folder+'/rec_%d.jpg'%iteration )
             load_params(netG, backup_para)
 
-        if iteration % (save_interval*50) == 0 or iteration == total_iterations:
+        if iteration % (save_interval) == 0 or iteration == total_iterations:
             backup_para = copy_G_params(netG)
             load_params(netG, avg_param_G)
             torch.save({'g':netG.state_dict(),'d':netD.state_dict()}, saved_model_folder+'/%d.pth'%iteration)
