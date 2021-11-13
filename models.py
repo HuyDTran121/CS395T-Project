@@ -88,25 +88,24 @@ class SEBlock(nn.Module):
 
 
     def forward(self, feat_small, feat_big):
-        print("SEBlock")
-        print(self.ch_in)
-        print(self.ch_out)
-        print("feat_small", feat_small.shape)
-        print("feat_big", feat_big.shape)
         avgpool = self.avgpool(feat_small)
-        print("avgpool", avgpool.shape)
         conv1 = self.conv1(avgpool)
-        print("conv1", conv1.shape)
         swish = self.swish(conv1)
-        print("swish", swish.shape)
         conv2 = self.conv2(swish)
-        print("conv2", conv2.shape)
         sigmoid = self.sigmoid(conv2)
-        print("sigmoid", sigmoid.shape)
         out = feat_big * sigmoid
         # out = feat_big * self.main(feat_small)
-        print("out", out.shape)
-        assert False
+        # print("SEBlock")
+        # print(self.ch_in)
+        # print(self.ch_out)
+        # print("feat_small", feat_small.shape)
+        # print("feat_big", feat_big.shape)
+        # print("avgpool", avgpool.shape)
+        # print("conv1", conv1.shape)
+        # print("swish", swish.shape)
+        # print("conv2", conv2.shape)
+        # print("sigmoid", sigmoid.shape)
+        # print("out", out.shape)
         return out
 
 
