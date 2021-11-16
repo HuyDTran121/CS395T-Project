@@ -123,21 +123,20 @@ class SEBlock(nn.Module):
         # sigmoid = self.sigmoid(conv2)
         # out = feat_big * sigmoid
         return self.main(feat_big)
-        main = self.main(feat_small)
-        print("SEBlock")
-        print("feat_small", feat_small.shape)
-        print("feat_big", feat_big.shape)
-        print("main", main.shape)
-        out = feat_big * main
-        print(self.ch_in)
-        print(self.ch_out)
+        # main = self.main(feat_small)
+        # print("SEBlock")
+        # print("feat_small", feat_small.shape)
+        # print("feat_big", feat_big.shape)
+        # print("main", main.shape)
+        # out = feat_big * main
+        # print(self.ch_in)
+        # print(self.ch_out)
         # print("avgpool", avgpool.shape)
         # print("conv1", conv1.shape)
         # print("swish", swish.shape)
         # print("conv2", conv2.shape)
         # print("sigmoid", sigmoid.shape)
         # print("out", out.shape)
-        assert False
         return out
 
 
