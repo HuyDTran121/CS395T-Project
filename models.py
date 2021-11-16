@@ -70,9 +70,9 @@ class Swish(nn.Module):
     def forward(self, feat):
         return feat * torch.sigmoid(feat)
 
-class SEBlock(nn.Module):
+class ChannelAttentionBlock(nn.Module):
     def __init__(self, ch_in, ch_out, ratio=16):
-        super(SEBlock, self).__init__()
+        super(ChannelAttentionBlock, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
            
@@ -86,7 +86,33 @@ class SEBlock(nn.Module):
         avg_out = self.fc(self.avg_pool(x))
         max_out = self.fc(self.max_pool(x))
         out = avg_out + max_out
-        return feat_big * self.sigmoid(out)
+        return self.sigmoid(out)
+
+class SpatialAttentionBlock(nn.Module):
+    def __init__(self, kernel_size=7):
+        super(SpatialAttentionBlock, self).__init__()
+        self.conv1 = nn.Conv2d(2,1,kernel_size, padding=kernel_size//2, bias = False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, feat_big):
+        x = feat_big
+        avg_out = torch.mean(x, dim=1, keepdim=True)
+        max_out, _ = torch.max(x, dim=1, keepdim=True)
+        x = torch.cat([avg_out, max_out], dim=1)
+        x = self.conv1(x)
+        return self.sigmoid(x)
+
+class SEBlock(nn.Module):
+    def __init__(self, ch_in, ch_out):
+        super(SEBlock, self).__init__()
+        self.ca = ChannelAttentionBlock(ch_in, ch_out)
+        self.sa = SpatialAttentionBlock()
+
+    def forward(self, feat_small, feat_big):
+        out = feat_big * self.ca(feat_small, feat_big)
+        out = out * self.sa(out)
+
+        return out
 
 # class SEBlock(nn.Module):
 #     def __init__(self, ch_in, ch_out):
