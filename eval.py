@@ -60,12 +60,15 @@ if __name__ == "__main__":
     
     net_ig = Generator( ngf=64, nz=noise_dim, nc=3, im_size=args.im_size)#, big=args.big )
     net_ig.to(device)
+    multi_gpu = True
+    if multi_gpu:
+        net_ig = nn.DataParallel(net_ig.to(device))
 
     for epoch in [10000*i for i in range(args.start_iter, args.end_iter+1)]:
-        ckpt = './models/%d.pth'%(epoch)
+        ckpt = args.ckpt
         checkpoint = torch.load(ckpt, map_location=lambda a,b: a)
         net_ig.load_state_dict(checkpoint['g'])
-        #load_params(net_ig, checkpoint['g_ema'])
+        # load_params(net_ig, checkpoint['g_ema'])
 
         #net_ig.eval()
         print('load checkpoint success, epoch %d'%epoch)

@@ -438,9 +438,16 @@ if __name__ == "__main__":
     #from utils import PairedMultiDataset, InfiniteSamplerWrapper, make_folders, AverageMeter
     from torch.utils.data import DataLoader
     from torchvision import utils as vutils
-    
+    import argparse
+    parser = argparse.ArgumentParser(
+        description='score generator'
+    )
+    parser.add_argument('--data_path', type=str)
+    parser.add_argument('--img_path', type=str)
+    parser.add_argument('--batch_size', type=int, default=5)
+    args = parser.parse_args()
     IM_SIZE = 1024
-    BATCH_SIZE = 5
+    BATCH_SIZE = args.batch_size
     DATALOADER_WORKERS = 5
     NBR_CLS = 2000
     TRIAL_NAME = 'trial_vae_512_1'
@@ -535,8 +542,8 @@ if __name__ == "__main__":
     inception = load_patched_inception_v3().cuda()
     inception.eval()
     
-    path_a = '/home/huydtran/Desktop/FastGAN-pytorch/few-shot-images/anime-face/'
-    path_b = '/home/huydtran/Desktop/FastGAN-pytorch/train_results/test1/images/'
+    path_a = args.data_path
+    path_b = args.img_path
 
     from torchvision import transforms
 
