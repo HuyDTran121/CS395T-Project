@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from torch.nn.utils import spectral_norm
 import torch.nn.functional as F
-
+from math import log
 import random
 
 seq = nn.Sequential
@@ -71,18 +71,17 @@ class Swish(nn.Module):
         return feat * torch.sigmoid(feat)
 
 class ChannelAttentionBlock(nn.Module):
-    def __init__(self, ch_in, ch_out, ratio=16):
+    def __init__(self, ch_in, ratio=16):
         super(ChannelAttentionBlock, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.max_pool = nn.AdaptiveMaxPool2d(1)
            
         self.fc = nn.Sequential(nn.Conv2d(ch_in, ch_in // ratio, 1, bias=False),
                                nn.ReLU(),
-                               nn.Conv2d(ch_in // ratio, ch_out, 1, bias=False))
+                               nn.Conv2d(ch_in // ratio, ch_in, 1, bias=False))
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, feat_small, feat_big):
-        x = feat_small
+    def forward(self, x):
         avg_out = self.fc(self.avg_pool(x))
         max_out = self.fc(self.max_pool(x))
         out = avg_out + max_out
@@ -94,23 +93,72 @@ class SpatialAttentionBlock(nn.Module):
         self.conv1 = nn.Conv2d(2,1,kernel_size, padding=kernel_size//2, bias = False)
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, feat_big):
-        x = feat_big
+    def forward(self, x):
         avg_out = torch.mean(x, dim=1, keepdim=True)
         max_out, _ = torch.max(x, dim=1, keepdim=True)
         x = torch.cat([avg_out, max_out], dim=1)
         x = self.conv1(x)
         return self.sigmoid(x)
 
+class ECA(nn.Module):
+    """Constructs a ECA module.
+    Args:
+        channel: Number of channels of the input feature map
+    """
+    
+    def __init__(self, channel):
+        super(ECA, self).__init__()
+        gamma = 2
+        b = 1
+        t = int(abs((log(channel, 2) + b)/gamma))
+        k = t if t % 2 else t + 1
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.conv = nn.Conv1d(1, 1, kernel_size=k, padding=(k - 1) // 2, bias=False) 
+
+    def forward(self, x):
+        # feature descriptor on the global spatial information
+        y = self.avg_pool(x)
+
+        # Two different branches of ECA module
+        y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
+
+        # Multi-scale information fusion
+        y = torch.sigmoid(y)
+
+        return x * y.expand_as(x)
+
 class SEBlock(nn.Module):
+    class UpBlock(torch.nn.Module):
+        def __init__(self, n_input, n_output, kernel_size=3, stride=2):
+            super().__init__()
+            self.c1 = torch.nn.ConvTranspose2d(n_input, n_output, kernel_size=kernel_size, padding=kernel_size // 2,
+                                      stride=stride, output_padding=1)
+
+        def forward(self, x):
+            return F.relu(self.c1(x))
+            
     def __init__(self, ch_in, ch_out):
         super(SEBlock, self).__init__()
-        self.ca = ChannelAttentionBlock(ch_in, ch_out)
+        # self.conv1 = nn.Conv2d(ch_in, ch_out, kernel_size=3, stride=1, padding=1, bias = False)
+        # self.bn1 = nn.BatchNorm2d(ch_out)
+        # self.relu = nn.ReLU(inplace=True)
+        # self.ca = ChannelAttentionBlock(ch_out)
+        self.eca = ECA(ch_out)
         self.sa = SpatialAttentionBlock()
 
     def forward(self, feat_small, feat_big):
-        out = feat_big * self.ca(feat_small, feat_big)
-        out = out * self.sa(out)
+        # residual = feat_small
+        # out = self.conv1(feat_small)
+        # out = self.bn1(out)
+        # out = self.relu(out)
+        # print("out",out.shape)
+        # out = self.upscale(out)
+        # print("up",out.shape)
+        # print("small",feat_small.shape)
+        # print("big",feat_big.shape)
+        out = self.eca(feat_big)
+        out = self.sa(out) * feat_big
+        # out += residual
 
         return out
 
