@@ -79,15 +79,17 @@ class ECA(nn.Module):
     
     def __init__(self, channel):
         super(ECA, self).__init__()
-        gamma = 2
-        b = 1
-        t = int(abs((log(channel, 2) + b)/gamma))
-        k = t if t % 2 else t + 1
+        # gamma = 2
+        # b = 1
+        # t = int(abs((log(channel, 2) + b)/gamma))
+        # k = t if t % 2 else t + 1
+        k = channel//2 + 1
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.conv = nn.Conv1d(1, 1, kernel_size=k, padding=(k - 1) // 2, bias=False) 
 
     def forward(self, x):
         # feature descriptor on the global spatial information
+        # print("x", x.shape)
         y = self.avg_pool(x)
 
         # Two different branches of ECA module
@@ -95,7 +97,7 @@ class ECA(nn.Module):
 
         # Multi-scale information fusion
         y = torch.sigmoid(y)
-
+        # print("y", y.shape)
         return x * y.expand_as(x)
         # return y.expand_as(x)
 
@@ -104,39 +106,43 @@ class SEBlock(nn.Module):
         super().__init__()
         self.ch_in = ch_in
         self.ch_out = ch_out
-        self.main = ECA(ch_out)
+        self.eca = ECA(ch_in)
         # self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
         #                             conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
         #                             conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-        # self.avgpool = nn.AdaptiveAvgPool2d(4)
-        # self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
-        # self.swish = Swish()
-        # self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
-        # self.sigmoid = nn.Sigmoid()
+        self.avgpool = nn.AdaptiveAvgPool2d(4)
+        self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
+        self.swish = Swish()
+        self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
+        self.sigmoid = nn.Sigmoid()
 
 
     def forward(self, feat_small, feat_big):
-        # avgpool = self.avgpool(feat_small)
-        # conv1 = self.conv1(avgpool)
-        # swish = self.swish(conv1)
-        # conv2 = self.conv2(swish)
-        # sigmoid = self.sigmoid(conv2)
-        # out = feat_big * sigmoid
-        return self.main(feat_big)
-        # main = self.main(feat_small)
+        avgpool = self.avgpool(feat_small)
+        conv1 = self.conv1(avgpool)
+        swish = self.swish(conv1)
+        conv2 = self.conv2(swish)
+        sigmoid = self.sigmoid(conv2)
+        out = feat_big * sigmoid
+        out = self.eca(out)
         # print("SEBlock")
-        # print("feat_small", feat_small.shape)
-        # print("feat_big", feat_big.shape)
-        # print("main", main.shape)
-        # out = feat_big * main
         # print(self.ch_in)
         # print(self.ch_out)
+        # print("feat_small", feat_small.shape)
+        # print("feat_big", feat_big.shape)
+        # out = self.main(feat_small)
+        # print(out.shape)
+        # return feat_big * out
+        # main = self.main(feat_small)
+        # print("main", main.shape)
+        # out = feat_big * main
         # print("avgpool", avgpool.shape)
         # print("conv1", conv1.shape)
         # print("swish", swish.shape)
         # print("conv2", conv2.shape)
         # print("sigmoid", sigmoid.shape)
         # print("out", out.shape)
+        # assert False
         return out
 
 
