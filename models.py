@@ -108,11 +108,11 @@ class SEBlock(nn.Module):
         # self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
         #                             conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
         #                             conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-        # self.avgpool = nn.AdaptiveAvgPool2d(4)
-        # self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
-        # self.swish = Swish()
-        # self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
-        # self.sigmoid = nn.Sigmoid()
+        self.avgpool = nn.AdaptiveAvgPool2d(4)
+        self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
+        self.swish = Swish()
+        self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
+        self.sigmoid = nn.Sigmoid()
 
 
     def forward(self, feat_small, feat_big):
