@@ -460,19 +460,14 @@ if __name__ == "__main__":
     data_root_sketch_1 = './sketch_simplification/vggadin_iter_700'
     data_root_sketch_2 = './sketch_simplification/vggadin_iter_1900'
     data_root_sketch_3 = './sketch_simplification/vggadin_iter_2300'
-
     dataset = PairedMultiDataset(data_root_colorful, data_root_sketch_1, data_root_sketch_2, data_root_sketch_3, im_size=IM_SIZE, rand_crop=False)
     dataloader = iter(DataLoader(dataset, BATCH_SIZE, shuffle=False, num_workers=DATALOADER_WORKERS, pin_memory=True))
-
-
     from pretrain_ae import StyleEncoder, ContentEncoder, Decoder
     import pickle
     from refine_ae_as_gan import AE, RefineGenerator
     from utils import load_params
-
     net_ig = RefineGenerator().cuda()
     net_ig = nn.DataParallel(net_ig)
-
     ckpt = './train_results/trial_refine_ae_as_gan_1024_2/models/4.pth'
     if ckpt is not None:
         ckpt = torch.load(ckpt)
@@ -482,12 +477,10 @@ if __name__ == "__main__":
         load_params(net_ig, net_ig_ema)
     net_ig = net_ig.module
     #net_ig.eval()
-
     net_ae = AE()
     net_ae.load_state_dicts('./train_results/trial_vae_512_1/models/176000.pth')
     net_ae.cuda()
     net_ae.eval()
-
     #style_encoder = StyleEncoder(nbr_cls=NBR_CLS).cuda()
     #content_encoder = ContentEncoder().cuda()
     #decoder = Decoder().cuda()
@@ -511,28 +504,22 @@ if __name__ == "__main__":
             rgb_img, _, _, skt_img = next(dataloader)
             rgb_img = rgb_img.cuda()
             skt_img = skt_img.cuda()
-
             style_feat, _ = style_encoder(rgb_img)
             content_feats = content_encoder( F.interpolate( skt_img , size=512 ) )
             gimg = decoder(content_feats, style_feat)
-
             vutils.save_image(0.5*(gimg+1), 'tmp.jpg')        
             yield gimg
-
     from utils import true_randperm
     @torch.no_grad()
     def image_generator(dataset, net_ae, net_ig, n_batches=500):
         counter = 0
         dataloader = iter(DataLoader(dataset, BATCH_SIZE, shuffle=False, num_workers=DATALOADER_WORKERS, pin_memory=False))
-
         while counter < n_batches:
             counter += 1
             rgb_img, _, _, skt_img = next(dataloader)
             rgb_img = F.interpolate( rgb_img, size=512 ).cuda()
             skt_img = F.interpolate( skt_img, size=512 ).cuda()
-
             #perm = true_randperm(rgb_img.shape[0], device=rgb_img.device)
-
             gimg_ae, style_feat = net_ae(skt_img, rgb_img)
             g_image = net_ig(gimg_ae, style_feat, skt_img)
             if counter == 1:
