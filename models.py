@@ -104,25 +104,25 @@ class SEBlock(nn.Module):
         super().__init__()
         self.ch_in = ch_in
         self.ch_out = ch_out
-        self.main = ECA(ch_out)
+        self.eca = ECA(ch_out)
         # self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
         #                             conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
         #                             conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-        # self.avgpool = nn.AdaptiveAvgPool2d(4)
-        # self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
-        # self.swish = Swish()
-        # self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
-        # self.sigmoid = nn.Sigmoid()
+        self.avgpool = nn.AdaptiveAvgPool2d(4)
+        self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
+        self.swish = Swish()
+        self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
+        self.sigmoid = nn.Sigmoid()
 
 
     def forward(self, feat_small, feat_big):
-        # avgpool = self.avgpool(feat_small)
-        # conv1 = self.conv1(avgpool)
-        # swish = self.swish(conv1)
-        # conv2 = self.conv2(swish)
-        # sigmoid = self.sigmoid(conv2)
-        # out = feat_big * sigmoid
-        return self.main(feat_big)
+        avgpool = self.avgpool(feat_small)
+        conv1 = self.conv1(avgpool)
+        swish = self.swish(conv1)
+        conv2 = self.conv2(swish)
+        sigmoid = self.sigmoid(conv2)
+        out = self.eca(feat_big * sigmoid)
+        return out
         # main = self.main(feat_small)
         # print("SEBlock")
         # print("feat_small", feat_small.shape)
