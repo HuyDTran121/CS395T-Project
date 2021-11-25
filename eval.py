@@ -5,13 +5,13 @@ import torch.nn.functional as F
 from torchvision.datasets import ImageFolder
 from torch.utils.data import DataLoader
 from torchvision import utils as vutils
-
+import sys
 import os
 import random
 import argparse
 from tqdm import tqdm
 
-from models import Generator
+
 
 
 def load_params(model, new_param):
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description='generate images'
     )
-    parser.add_argument('--ckpt', type=str)
+    parser.add_argument('--root', type=str, default="./")
     parser.add_argument('--cuda', type=int, default=0, help='index of gpu to use')
     parser.add_argument('--start_iter', type=int, default=6)
     parser.add_argument('--end_iter', type=int, default=10)
@@ -54,7 +54,12 @@ if __name__ == "__main__":
     parser.add_argument('--im_size', type=int, default=1024)
     parser.set_defaults(big=False)
     args = parser.parse_args()
-
+    
+    from importlib.machinery import SourceFileLoader
+  
+    # imports the module from the given path
+    local_modules = SourceFileLoader("models", os.path.join(args.root,"models.py")).load_module()
+    Generator = local_modules.Generator
     noise_dim = 256
     device = torch.device('cuda:%d'%(args.cuda))
     
@@ -65,7 +70,7 @@ if __name__ == "__main__":
         net_ig = nn.DataParallel(net_ig.to(device))
 
     for epoch in [10000*i for i in range(args.start_iter, args.end_iter+1)]:
-        ckpt = args.ckpt
+        ckpt = os.path.join(args.root, "models/all_%d.pth"%epoch)
         checkpoint = torch.load(ckpt, map_location=lambda a,b: a)
         net_ig.load_state_dict(checkpoint['g'])
         # load_params(net_ig, checkpoint['g_ema'])
@@ -77,7 +82,7 @@ if __name__ == "__main__":
 
         del checkpoint
 
-        dist = 'eval_%d'%(epoch)
+        dist = os.path.join(args.root,'eval_%d'%(epoch))
         dist = os.path.join(dist, 'img')
         os.makedirs(dist, exist_ok=True)
 
