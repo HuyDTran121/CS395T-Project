@@ -351,7 +351,7 @@ class ECBAM(nn.Module):
 
 
 ########
-BLOCK_TYPE = SLEBlock
+BLOCK_TYPE = ECA2SLE
 print(str(BLOCK_TYPE))
 
 
