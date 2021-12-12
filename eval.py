@@ -65,6 +65,7 @@ if __name__ == "__main__":
     
     net_ig = Generator( ngf=64, nz=noise_dim, nc=3, im_size=args.im_size)#, big=args.big )
     net_ig.to(device)
+
     multi_gpu = True
     if multi_gpu:
         net_ig = nn.DataParallel(net_ig.to(device))

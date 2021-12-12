@@ -71,73 +71,6 @@ class Swish(nn.Module):
         return feat * torch.sigmoid(feat)
 
 
-class ECA(nn.Module):
-    """Constructs a ECA module.
-    Args:
-        channel: Number of channels of the input feature map
-    """
-    
-    def __init__(self, channel):
-        super(ECA, self).__init__()
-        gamma = 2
-        b = 1
-        t = int(abs((log(channel, 2) + b)/gamma))
-        k = t if t % 2 else t + 1
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.conv = nn.Conv1d(1, 1, kernel_size=k, padding=(k - 1) // 2, bias=False) 
-
-    def forward(self, x):
-        # feature descriptor on the global spatial information
-        y = self.avg_pool(x)
-
-        # Two different branches of ECA module
-        y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
-
-        # Multi-scale information fusion
-        y = torch.sigmoid(y)
-
-        return x * y.expand_as(x)
-        # return y.expand_as(x)
-
-######
-
-# 1 Default unmodified SLE Block from FastGAN 
-class SLEBlock(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super().__init__()
-        self.ch_in = ch_in
-        self.ch_out = ch_out
-        self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
-                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
-                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-
-
-    def forward(self, feat_small, feat_big):
-        out = feat_big * self.main(feat_small)
-        return out
-
-
-
-
-# 2 CBAM modified to change channel size from feat_small to feat_big, only using channel attention
-class CBAM(nn.Module):
-    def __init__(self, ch_in, ch_out, ratio=16):
-        super(CBAM, self).__init__()
-        self.avg_pool = nn.AdaptiveAvgPool2d(1)
-        self.max_pool = nn.AdaptiveMaxPool2d(1)
-           
-        self.fc = nn.Sequential(nn.Conv2d(ch_in, ch_in // ratio, 1, bias=False),
-                               nn.ReLU(),
-                               nn.Conv2d(ch_in // ratio, ch_out, 1, bias=False))
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, feat_small, feat_big):
-        x = feat_small
-        avg_out = self.fc(self.avg_pool(x))
-        max_out = self.fc(self.max_pool(x))
-        out = avg_out + max_out
-        return feat_big * self.sigmoid(out)
-
 # ECA block from https://arxiv.org/abs/1910.03151
 class ECA(nn.Module):
     """Constructs a ECA module.
@@ -167,109 +100,6 @@ class ECA(nn.Module):
         return x * y.expand_as(x)
         # return y.expand_as(x)
 
-# 3 Feed feat_small into ECA block, then SLE
-class ECA2SLE(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super().__init__()
-        self.ch_in = ch_in
-        self.ch_out = ch_out
-        self.eca = ECA(ch_out)
-        self.sle = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
-                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
-                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-
-
-    def forward(self, feat_small, feat_big):
-        eca = self.eca(feat_small)
-        sle = self.sle(eca)
-        return feat_big * sle
-
-# 4 ECA_SLE_combined by passing SLE learned channel weights into ECA channel weights for feat_big
-class SLECA(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super().__init__()
-        self.ch_in = ch_in
-        self.ch_out = ch_out
-        self.eca = ECA(ch_out)
-        self.sle = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
-                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
-                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-
-
-    def forward(self, feat_small, feat_big):
-        sle = self.sle(feat_small)
-        out = self.eca(feat_big) * sle
-        return out
-
-# 5 Only using ECA on feat_big and ignoring feat_small
-class PureECA(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super().__init__()
-        self.ch_in = ch_in
-        self.ch_out = ch_out
-        self.eca = ECA(ch_out)
-
-
-    def forward(self, feat_small, feat_big):
-        return self.eca(feat_big)
-
-# class UpscaleECA(nn.Module):
-#     """Constructs a ECA module.
-#     Args:
-#         channel: Number of channels of the input feature map
-#     """
-    
-#     def __init__(self, channel):
-#         super(UpscaleECA, self).__init__()
-#         k = channel//2 + 1
-#         self.avg_pool = nn.AdaptiveAvgPool2d(1)
-#         self.conv = nn.Conv1d(1, 1, kernel_size=k, padding=(k - 1) // 2, bias=False) 
-
-#     def forward(self, x):
-#         # feature descriptor on the global spatial information
-#         y = self.avg_pool(x)
-
-#         # Two different branches of ECA module
-#         y = self.conv(y.squeeze(-1).transpose(-1, -2)).transpose(-1, -2).unsqueeze(-1)
-
-#         # Multi-scale information fusion
-#         y = torch.sigmoid(y)
-#         return y.expand_as(x)
-
-# class ECA_Upscale(nn.Module):
-#     def __init__(self, ch_in, ch_out):
-#         super().__init__()
-#         self.ch_in = ch_in
-#         self.ch_out = ch_out
-#         self.eca = UpscaleECA(ch_in)
-#         # self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
-#         #                             conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
-#         #                             conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-#         self.avgpool = nn.AdaptiveAvgPool2d(4)
-#         self.conv1 = conv2d(ch_in, ch_out, 4, 1, 0, bias=False)
-#         self.swish = Swish()
-#         self.conv2 = conv2d(ch_out, ch_out, 1, 1, 0, bias=False)
-#         self.sigmoid = nn.Sigmoid()
-
-
-#     def forward(self, feat_small, feat_big):
-#         return feat_big * self.eca(feat_small)
-
-# 6 Feed feat_small through SLE and find ECA channel weights on the result
-class SLE2ECA(nn.Module):
-    def __init__(self, ch_in, ch_out):
-        super().__init__()
-        self.ch_in = ch_in
-        self.ch_out = ch_out
-        self.eca = ECA(ch_out)
-        self.sle = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
-                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
-                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
-
-
-    def forward(self, feat_small, feat_big):
-        sle = self.sle(feat_small)
-        return self.eca(feat_big * sle)
 
 class ChannelAttentionBlock(nn.Module):
     def __init__(self, ch_in, ratio=16):
@@ -317,10 +147,115 @@ class SpatialAttentionBlock(nn.Module):
         x = torch.cat([avg_out, max_out], dim=1)
         x = self.conv1(x)
         return self.sigmoid(x)
-# 7 CBAM with channel and attention blocks with adaptive channel attention block
-class AdaptiveCBAM(nn.Module):
+
+######
+
+# 1 Default unmodified SLE Block from FastGAN 
+class SLEBlock(nn.Module):
     def __init__(self, ch_in, ch_out):
-        super(AdaptiveCBAM, self).__init__()
+        super().__init__()
+        self.ch_in = ch_in
+        self.ch_out = ch_out
+        self.main = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
+                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
+                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
+
+
+    def forward(self, feat_small, feat_big):
+        out = feat_big * self.main(feat_small)
+        return out
+
+
+
+
+# 2 CBAM modified to change channel size from feat_small to feat_big, only using channel attention
+class CBAM_channel(nn.Module):
+    def __init__(self, ch_in, ch_out, ratio=16):
+        super(CBAM, self).__init__()
+        self.avg_pool = nn.AdaptiveAvgPool2d(1)
+        self.max_pool = nn.AdaptiveMaxPool2d(1)
+           
+        self.fc = nn.Sequential(nn.Conv2d(ch_in, ch_in // ratio, 1, bias=False),
+                               nn.ReLU(),
+                               nn.Conv2d(ch_in // ratio, ch_out, 1, bias=False))
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, feat_small, feat_big):
+        x = feat_small
+        avg_out = self.fc(self.avg_pool(x))
+        max_out = self.fc(self.max_pool(x))
+        out = avg_out + max_out
+        return feat_big * self.sigmoid(out)
+
+
+
+# 3 Feed feat_small into ECA block, then SLE
+class ESLE(nn.Module):
+    def __init__(self, ch_in, ch_out):
+        super().__init__()
+        self.ch_in = ch_in
+        self.ch_out = ch_out
+        self.eca = ECA(ch_out)
+        self.sle = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
+                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
+                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
+
+
+    def forward(self, feat_small, feat_big):
+        eca = self.eca(feat_small)
+        sle = self.sle(eca)
+        return feat_big * sle
+
+# 4 ECA_SLE_combined by passing SLE learned channel weights into ECA channel weights for feat_big
+class SLECA(nn.Module):
+    def __init__(self, ch_in, ch_out):
+        super().__init__()
+        self.ch_in = ch_in
+        self.ch_out = ch_out
+        self.eca = ECA(ch_out)
+        self.sle = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
+                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
+                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
+
+
+    def forward(self, feat_small, feat_big):
+        sle = self.sle(feat_small)
+        out = self.eca(feat_big) * sle
+        return out
+
+# 5 Only using ECA on feat_big and ignoring feat_small
+class ECABlock(nn.Module):
+    def __init__(self, ch_in, ch_out):
+        super().__init__()
+        self.ch_in = ch_in
+        self.ch_out = ch_out
+        self.eca = ECA(ch_out)
+
+
+    def forward(self, feat_small, feat_big):
+        return self.eca(feat_big)
+
+
+# 6 Feed feat_small through SLE and find ECA channel weights on the result
+class SLE_ECA(nn.Module):
+    def __init__(self, ch_in, ch_out):
+        super().__init__()
+        self.ch_in = ch_in
+        self.ch_out = ch_out
+        self.eca = ECA(ch_out)
+        self.sle = nn.Sequential(  nn.AdaptiveAvgPool2d(4), 
+                                    conv2d(ch_in, ch_out, 4, 1, 0, bias=False), Swish(),
+                                    conv2d(ch_out, ch_out, 1, 1, 0, bias=False), nn.Sigmoid() )
+
+
+    def forward(self, feat_small, feat_big):
+        sle = self.sle(feat_small)
+        return self.eca(feat_big * sle)
+
+# 7 CBAM with channel and attention blocks with adaptive channel attention block
+class CBAM_channel_spatial(nn.Module):
+    def __init__(self, ch_in, ch_out):
+        super(CBAM_channel_spatial, self).__init__()
         self.ca = AdaptiveChannelAttentionBlock(ch_in, ch_out)
         self.sa = SpatialAttentionBlock()
 
@@ -351,7 +286,7 @@ class ECBAM(nn.Module):
 
 
 ########
-BLOCK_TYPE = SLEBlock
+BLOCK_TYPE = ESLE
 print(str(BLOCK_TYPE))
 
 

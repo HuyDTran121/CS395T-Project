@@ -1,11 +1,10 @@
-# A Fast and Stable GAN for Small and High Resolution Imagesets - pytorch
-The official pytorch implementation of the paper "Towards Faster and Stabilized GAN Training for High-fidelity Few-shot Image Synthesis", the paper can be found [here](https://arxiv.org/abs/2101.04775).
+## Special Notes
+To switch attention mechanisms, change the BLOCK_TYPE in model.py line 289
+The code this project was based can be found at [link](https://github.com/odegeasslbc/FastGAN-pytorch)
 
 ## 0. Data
-The datasets used in the paper can be found at [link](https://drive.google.com/file/d/1aAJCZbXNHyraJ6Mi13dSbe7pTyfPXha0/view?usp=sharing). 
+The datasets used in the paper can be found at [link](https://drive.google.com/drive/folders/1GqSaMMkFn4-POR34e8PbZJfgfJXMavku?usp=sharing).
 
-After testing on over 20 datasets with each has less than 100 images, this GAN converges on 80% of them.
-I still cannot summarize an obvious pattern of the "good properties" for a dataset which this GAN can converge on, please feel free to try with your own datasets.
  
 
 ## 1. Description
@@ -45,19 +44,3 @@ cd ./train_results/name_of_your_training/
 python eval.py --n_sample 100 
 ```
 
-## 3. Pre-trained models
-The pre-trained models and the respective code of each model are shared [here](https://drive.google.com/drive/folders/1nCpr84nKkrs9-aVMET5h8gqFbUYJRPLR?usp=sharing).
-
-You can also use FastGAN to generate images with a pre-packaged Docker image, hosted on the Replicate registry: https://beta.replicate.ai/odegeasslbc/FastGAN
-
-## 4. Important notes
-1. The provided code is for research use only.
-2. Different model and training configurations are needed on different datasets. You may have to tune the hyper-parameters to get the best results on your own datasets. 
-
-    2.1. The hyper-parameters includes: the augmentation options, the model depth (how many layers), the model width (channel numbers of each layer). To change these, you have to change the code in models.py and train.py directly. 
-    
-    2.2. Please check the code in the shared pre-trained models on how each of them are configured differently on different datasets. Especially, compare the models.py for ffhq and art datasets, you will get an idea on what chages could be made on different datasets.
-
-## 5. Other notes
-1. The provided scripts are not well organized, contributions are welcomed to clean them.
-2.  An third-party implementation of this paper can be found [here](https://github.com/lucidrains/lightweight-gan), where some other techniques are included. I suggest you try both implementation if you find one of them does not work. 
