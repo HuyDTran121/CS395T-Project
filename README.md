@@ -1,6 +1,7 @@
 ## Special Notes
-To switch attention mechanisms, change the BLOCK_TYPE in model.py line 289
-The code this project was based can be found at [link](https://github.com/odegeasslbc/FastGAN-pytorch)
+To switch attention mechanisms, change the BLOCK_TYPE in model.py line 289.  
+The code this project was based can be found at [link](https://github.com/odegeasslbc/FastGAN-pytorch).  
+The research paper can be found [here](https://github.com/HuyDTran121/CS395T-Project/blob/master/report.pdf).
 
 ## 0. Data
 The datasets used in the paper can be found at [link](https://drive.google.com/drive/folders/1GqSaMMkFn4-POR34e8PbZJfgfJXMavku?usp=sharing).
